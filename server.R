@@ -10,6 +10,8 @@ consumer_secret <- 'qxC4e4Gm44fggsfLNqkBH5wxzHDaUGhlwcGwNqrZktneyMN4N8'
 access_token <- '31374068-NNsqMgoiWCqcVvk59gm8ZGCUoTxOHcStoWBaEhsci'
 access_secret <- 'Q2uKV4EHPjAP3FY8jsC5lagwHe365hZncZZDk57T82lau'
 setup_twitter_oauth(consumer_key, consumer_secret, access_token, access_secret)
+mConn <- mongo.create(host = "192.168.19.251")
+coll<-"rdb.twitterDocs"
 
 getTermMatrix <- memoise(function(q, numberOfTweets = 1500) {
   res <- searchTwitter(q, n = numberOfTweets)
@@ -27,11 +29,11 @@ getTermMatrix <- memoise(function(q, numberOfTweets = 1500) {
   #add twitter-cpecific stop-words "via", "available"
   myStopWords <- c(stopwords('english'), "available", "via")
   resCorpus <- tm_map(resCorpus, removeWords, myStopWords, mc.cores=1)
-  myDTM = TermDocumentMatrix(resCorpus, control = list(minWordLength = 1))
-  
-  m = as.matrix(myDTM)
-  
-  sort(rowSums(m), decreasing = TRUE)
+  myDTM <- TermDocumentMatrix(resCorpus, control = list(minWordLength = 1))
+  mvec <- sort(rowSums(as.matrix(myDTM)), decreasing = TRUE)
+  if(mongo.is.connected(mConn))
+    mongo.insert(mConn,coll,mongo.bson.from.list(list(keys=q,terms=as.list(mvec))))
+  mvec
 })
 
 shinyServer(function(input, output) {
